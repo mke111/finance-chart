@@ -157,22 +157,31 @@ const App = (() => {
       const matches = ALL_SYMBOLS.filter(s =>
         s.code.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)
       ).slice(0, 10);
-      if (!matches.length) { searchResults.classList.add('hidden'); return; }
-      searchResults.innerHTML = matches.map(s => `
-        <div class="search-item" data-code="${s.code}">
+
+      // 如果没有匹配，显示"直接查询"选项
+      const items = matches.length ? matches.map(s => `
+        <div class="search-item" data-code="${s.code}" data-type="${s.type}">
           <div class="s-code">${s.code}</div>
           <div class="s-name">${s.name}</div>
         </div>
-      `).join('');
+      `).join('') : `
+        <div class="search-item search-custom" data-code="${searchInput.value.trim().toUpperCase()}" data-type="custom">
+          <div class="s-code">${searchInput.value.trim().toUpperCase()}</div>
+          <div class="s-name">直接查询此代码 →</div>
+        </div>
+      `;
+
+      searchResults.innerHTML = items;
       searchResults.classList.remove('hidden');
       searchResults.querySelectorAll('.search-item').forEach(item => {
         item.addEventListener('click', () => {
-          const sym = ALL_SYMBOLS.find(s => s.code === item.dataset.code);
-          if (sym) {
-            loadSymbol(sym);
-            searchInput.value = '';
-            searchResults.classList.add('hidden');
-            // Switch to correct category tab
+          const code = item.dataset.code;
+          const type = item.dataset.type;
+          const sym = ALL_SYMBOLS.find(s => s.code === code) || { code, name: code, type: type === 'custom' ? 'us' : type };
+          loadSymbol(sym);
+          searchInput.value = '';
+          searchResults.classList.add('hidden');
+          if (type !== 'custom') {
             document.querySelectorAll('.cat-btn').forEach(b => {
               b.classList.toggle('active', b.dataset.cat === sym.type);
             });
