@@ -22,13 +22,16 @@ app.get('/api/proxy', async (req, res) => {
   }
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
     const response = await fetch(targetUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; finance-chart/1.0)',
         'Accept': 'application/json',
       },
-      timeout: 15000,
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
     const contentType = response.headers.get('content-type') || 'application/json';
     const body = await response.text();
     res.set('Content-Type', contentType);
