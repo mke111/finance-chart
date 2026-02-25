@@ -59,9 +59,26 @@ const App = (() => {
 
   function startPriceUpdater() {
     if (priceUpdateTimer) clearInterval(priceUpdateTimer);
-    priceUpdateTimer = setInterval(() => {
-      fetchAndUpdateQuote(currentSymbol);
-    }, 30000);
+    priceUpdateTimer = setInterval(async () => {
+      const q = await fetchQuote(currentSymbol);
+      if (!q) return;
+      // 更新顶部价格
+      const priceEl = document.getElementById('current-price');
+      const changeEl = document.getElementById('current-change');
+      const changePctEl = document.getElementById('current-change-pct');
+      if (priceEl) priceEl.textContent = fmtPrice(q.price);
+      if (changeEl && changePctEl) {
+        const sign = q.change >= 0 ? '+' : '';
+        const cls = q.change >= 0 ? 'up' : 'down';
+        changeEl.textContent = `${sign}${(q.price * q.change / 100).toFixed(2)}`;
+        changeEl.className = cls;
+        changePctEl.textContent = `(${sign}${q.change.toFixed(2)}%)`;
+        changePctEl.className = cls;
+      }
+      updateSymbolPrice(currentSymbol.code, q);
+      // 更新图表最后一根K线
+      ChartManager.updateLastCandle(q.price);
+    }, 5000); // 5秒刷新一次
   }
 
   // ===== Toolbar =====
@@ -151,6 +168,39 @@ const App = (() => {
     const searchInput = document.getElementById('search-input');
     const searchResults = document.getElementById('search-results');
 
+    function guessType(code) {
+      const c = code.toUpperCase();
+      const cryptoSymbols = ['BTC','ETH','SOL','BNB','XRP','DOGE','ADA','AVAX','DOT','LINK','UNI','LTC','XLM','XMR','TON','SHIB','PEPE','SUI','APT','ARB','OP','NEAR','ICP','FIL'];
+      if (cryptoSymbols.some(s => c.startsWith(s)) || c.endsWith('USDT') || c.endsWith('USDC')) return 'crypto';
+      if (c.endsWith('.HK')) return 'hk';
+      if (c.endsWith('.SS') || c.endsWith('.SZ')) return 'cn';
+      if (c.endsWith('=X')) return 'fx';
+      if (c.endsWith('=F')) return 'metal';
+      return 'us';
+    }
+
+    function selectSymbol(code, type) {
+      const existing = ALL_SYMBOLS.find(s => s.code === code);
+      const sym = existing || { code, name: code, type };
+      // 加密货币需要 cgId
+      if (sym.type === 'crypto' && !sym.cgId) sym.cgId = code.toLowerCase().replace('usdt','').replace('usdc','');
+      loadSymbol(sym);
+      searchInput.value = '';
+      searchResults.classList.add('hidden');
+      if (existing) {
+        document.querySelectorAll('.cat-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === sym.type));
+        renderSymbolList(sym.type);
+      }
+    }
+
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const code = searchInput.value.trim().toUpperCase();
+        if (!code) return;
+        selectSymbol(code, guessType(code));
+      }
+    });
+
     searchInput.addEventListener('input', () => {
       const q = searchInput.value.trim().toLowerCase();
       if (!q) { searchResults.classList.add('hidden'); return; }
@@ -158,35 +208,25 @@ const App = (() => {
         s.code.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)
       ).slice(0, 10);
 
-      // 如果没有匹配，显示"直接查询"选项
-      const items = matches.length ? matches.map(s => `
+      const rawCode = searchInput.value.trim().toUpperCase();
+      const customItem = `
+        <div class="search-item search-custom" data-code="${rawCode}" data-type="custom">
+          <div class="s-code">${rawCode}</div>
+          <div class="s-name">直接查询此代码 →</div>
+        </div>`;
+
+      searchResults.innerHTML = matches.map(s => `
         <div class="search-item" data-code="${s.code}" data-type="${s.type}">
           <div class="s-code">${s.code}</div>
           <div class="s-name">${s.name}</div>
-        </div>
-      `).join('') : `
-        <div class="search-item search-custom" data-code="${searchInput.value.trim().toUpperCase()}" data-type="custom">
-          <div class="s-code">${searchInput.value.trim().toUpperCase()}</div>
-          <div class="s-name">直接查询此代码 →</div>
-        </div>
-      `;
+        </div>`).join('') + customItem;
 
-      searchResults.innerHTML = items;
       searchResults.classList.remove('hidden');
       searchResults.querySelectorAll('.search-item').forEach(item => {
         item.addEventListener('click', () => {
           const code = item.dataset.code;
-          const type = item.dataset.type;
-          const sym = ALL_SYMBOLS.find(s => s.code === code) || { code, name: code, type: type === 'custom' ? 'us' : type };
-          loadSymbol(sym);
-          searchInput.value = '';
-          searchResults.classList.add('hidden');
-          if (type !== 'custom') {
-            document.querySelectorAll('.cat-btn').forEach(b => {
-              b.classList.toggle('active', b.dataset.cat === sym.type);
-            });
-            renderSymbolList(sym.type);
-          }
+          const type = item.dataset.type === 'custom' ? guessType(code) : item.dataset.type;
+          selectSymbol(code, type);
         });
       });
     });

@@ -320,5 +320,20 @@ const ChartManager = (() => {
     return v.toString();
   }
 
-  return { init, setData, setChartType, addOverlay, removeOverlay, addIndicatorPanel, removeIndicatorPanel, resizeAll };
+  function updateLastCandle(price) {
+    if (!mainSeries || !currentData.length) return;
+    const last = currentData[currentData.length - 1];
+    const updated = {
+      time: last.time,
+      open: last.open,
+      high: Math.max(last.high, price),
+      low: Math.min(last.low, price),
+      close: price,
+      volume: last.volume,
+    };
+    currentData[currentData.length - 1] = updated;
+    mainSeries.update(updated);
+  }
+
+  return { init, setData, setChartType, addOverlay, removeOverlay, addIndicatorPanel, removeIndicatorPanel, resizeAll, updateLastCandle };
 })();
