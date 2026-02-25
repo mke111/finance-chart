@@ -29,6 +29,7 @@ const App = (() => {
       const data = await fetchOHLCV(symbolObj, currentTf);
       ChartManager.setData(data);
       if (fitContent) ChartManager.resizeAll();
+      updateSignal(data);
     } catch (e) {
       console.error('loadSymbol error:', e);
     } finally {
@@ -275,6 +276,80 @@ const App = (() => {
     if (v >= 100) return v.toFixed(2);
     if (v >= 1) return v.toFixed(3);
     return v.toFixed(5);
+  }
+
+  // ===== Trading Signal =====
+  function updateSignal(data) {
+    if (!data || data.length < 30) return;
+    const signals = [];
+    let score = 0;
+
+    // RSI
+    const rsi = Indicators.RSI(data, 14);
+    const lastRsi = rsi[rsi.length - 1]?.value;
+    if (lastRsi !== undefined) {
+      if (lastRsi < 30) { signals.push({ label: `RSI ${lastRsi.toFixed(1)}`, hint: '超卖', type: 'buy' }); score += 2; }
+      else if (lastRsi > 70) { signals.push({ label: `RSI ${lastRsi.toFixed(1)}`, hint: '超买', type: 'sell' }); score -= 2; }
+      else { signals.push({ label: `RSI ${lastRsi.toFixed(1)}`, hint: '中性', type: 'neutral' }); }
+    }
+
+    // MACD
+    const macd = Indicators.MACD(data);
+    const mLen = macd.histogram.length;
+    if (mLen >= 2) {
+      const cur = macd.histogram[mLen - 1].value;
+      const prev = macd.histogram[mLen - 2].value;
+      if (cur > 0 && prev <= 0) { signals.push({ label: 'MACD', hint: '金叉', type: 'buy' }); score += 2; }
+      else if (cur < 0 && prev >= 0) { signals.push({ label: 'MACD', hint: '死叉', type: 'sell' }); score -= 2; }
+      else if (cur > 0) { signals.push({ label: 'MACD', hint: '多头', type: 'buy' }); score += 1; }
+      else { signals.push({ label: 'MACD', hint: '空头', type: 'sell' }); score -= 1; }
+    }
+
+    // MA20 vs MA60
+    const ma20 = Indicators.MA(data, 20);
+    const ma60 = Indicators.MA(data, 60);
+    if (ma20.length && ma60.length) {
+      const m20 = ma20[ma20.length - 1].value;
+      const m60 = ma60[ma60.length - 1].value;
+      if (m20 > m60) { signals.push({ label: 'MA20>MA60', hint: '多头排列', type: 'buy' }); score += 1; }
+      else { signals.push({ label: 'MA20<MA60', hint: '空头排列', type: 'sell' }); score -= 1; }
+    }
+
+    // KDJ
+    const kdj = Indicators.KDJ(data);
+    const kLen = kdj.K.length;
+    if (kLen >= 2) {
+      const k = kdj.K[kLen - 1].value;
+      const d = kdj.D[kLen - 1].value;
+      const pk = kdj.K[kLen - 2].value;
+      const pd = kdj.D[kLen - 2].value;
+      if (k > d && pk <= pd) { signals.push({ label: 'KDJ', hint: '金叉', type: 'buy' }); score += 1; }
+      else if (k < d && pk >= pd) { signals.push({ label: 'KDJ', hint: '死叉', type: 'sell' }); score -= 1; }
+      else { signals.push({ label: 'KDJ', hint: k > d ? '偏多' : '偏空', type: k > d ? 'buy' : 'sell' }); }
+    }
+
+    // Render
+    const scoreEl = document.getElementById('signal-score');
+    const labelEl = document.getElementById('signal-label');
+    const listEl = document.getElementById('signal-list');
+    if (!scoreEl) return;
+
+    const total = 6;
+    const pct = Math.round(((score + total) / (total * 2)) * 100);
+    scoreEl.textContent = score > 0 ? `+${score}` : score;
+    scoreEl.className = score > 1 ? 'sig-buy' : score < -1 ? 'sig-sell' : 'sig-neutral';
+
+    if (score >= 3) { labelEl.textContent = '强烈买入'; labelEl.className = 'sig-buy'; }
+    else if (score >= 1) { labelEl.textContent = '建议买入'; labelEl.className = 'sig-buy'; }
+    else if (score <= -3) { labelEl.textContent = '强烈卖出'; labelEl.className = 'sig-sell'; }
+    else if (score <= -1) { labelEl.textContent = '建议卖出'; labelEl.className = 'sig-sell'; }
+    else { labelEl.textContent = '中性观望'; labelEl.className = 'sig-neutral'; }
+
+    listEl.innerHTML = signals.map(s => `
+      <div class="sig-item">
+        <span class="sig-name">${s.label}</span>
+        <span class="sig-hint ${s.type}">${s.hint}</span>
+      </div>`).join('');
   }
 
   return { init };

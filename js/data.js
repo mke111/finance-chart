@@ -109,18 +109,51 @@ function parseYahoo(json) {
   return data;
 }
 
-// CoinGecko OHLC
-async function fetchCoinGecko(cgId, tf) {
-  const days = { '1m': 1, '5m': 1, '15m': 1, '30m': 7, '1h': 14, '4h': 90, '1D': 365, '1W': 730, '1M': 1825 };
-  const d = days[tf] || 365;
-  const url = `/api/proxy?url=${encodeURIComponent(`https://api.coingecko.com/api/v3/coins/${cgId}/ohlc?vs_currency=usd&days=${d}`)}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('CoinGecko fetch failed');
+// Binance OHLC (无需key，稳定)
+const BINANCE_SYMBOL_MAP = {
+  bitcoin: 'BTCUSDT', ethereum: 'ETHUSDT', solana: 'SOLUSDT',
+  binancecoin: 'BNBUSDT', ripple: 'XRPUSDT', dogecoin: 'DOGEUSDT',
+  cardano: 'ADAUSDT', polkadot: 'DOTUSDT', avalanche: 'AVAXUSDT',
+  chainlink: 'LINKUSDT', uniswap: 'UNIUSDT', litecoin: 'LTCUSDT',
+};
+
+function tfToBinance(tf) {
+  const map = { '1m':'1m','5m':'5m','15m':'15m','30m':'30m','1h':'1h','4h':'4h','1D':'1d','1W':'1w','1M':'1M' };
+  return map[tf] || '1d';
+}
+
+async function fetchBinance(cgId, tf) {
+  const symbol = BINANCE_SYMBOL_MAP[cgId] || (cgId.toUpperCase() + 'USDT');
+  const interval = tfToBinance(tf);
+  const limit = 500;
+  const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+  const proxy = `/api/proxy?url=${encodeURIComponent(url)}`;
+  const res = await fetch(proxy);
+  if (!res.ok) throw new Error('Binance fetch failed');
   const raw = await res.json();
-  return raw.map(([ts, o, h, l, c]) => ({
-    time: Math.floor(ts / 1000),
-    open: o, high: h, low: l, close: c, volume: 0
+  if (!Array.isArray(raw)) throw new Error('Binance bad response');
+  return raw.map(k => ({
+    time: Math.floor(k[0] / 1000),
+    open: parseFloat(k[1]),
+    high: parseFloat(k[2]),
+    low: parseFloat(k[3]),
+    close: parseFloat(k[4]),
+    volume: parseFloat(k[5]),
   }));
+}
+
+async function fetchBinanceQuote(cgId) {
+  const symbol = BINANCE_SYMBOL_MAP[cgId] || (cgId.toUpperCase() + 'USDT');
+  const url = `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`;
+  const proxy = `/api/proxy?url=${encodeURIComponent(url)}`;
+  const res = await fetch(proxy);
+  if (!res.ok) throw new Error('Binance quote failed');
+  const d = await res.json();
+  return {
+    price: parseFloat(d.lastPrice),
+    change: parseFloat(d.priceChangePercent),
+    volume: parseFloat(d.quoteVolume),
+  };
 }
 
 // Generate realistic mock data as fallback
@@ -155,7 +188,7 @@ function generateMockData(symbol, tf) {
 async function fetchOHLCV(symbolObj, tf) {
   try {
     if (symbolObj.type === 'crypto') {
-      return await fetchCoinGecko(symbolObj.cgId || symbolObj.code, tf);
+      return await fetchBinance(symbolObj.cgId || symbolObj.code, tf);
     } else {
       const { interval, range } = tfToYahoo(tf);
       const json = await fetchYahoo(symbolObj.code, interval, range);
@@ -173,11 +206,7 @@ async function fetchOHLCV(symbolObj, tf) {
 async function fetchQuote(symbolObj) {
   try {
     if (symbolObj.type === 'crypto') {
-      const url = `/api/proxy?url=${encodeURIComponent(`https://api.coingecko.com/api/v3/simple/price?ids=${symbolObj.cgId}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true`)}`;
-      const res = await fetch(url);
-      const json = await res.json();
-      const d = json[symbolObj.cgId];
-      return { price: d.usd, change: d.usd_24h_change, volume: d.usd_24h_vol };
+      return await fetchBinanceQuote(symbolObj.cgId || symbolObj.code);
     } else {
       const { interval, range } = tfToYahoo('1D');
       const json = await fetchYahoo(symbolObj.code, interval, range);

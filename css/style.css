@@ -289,3 +289,40 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
   #sidebar { display: none; }
   #toolbar { padding: 0 8px; }
 }
+
+/* ===== Signal Panel ===== */
+#main { display: flex; flex: 1; overflow: hidden; }
+
+#signal-panel {
+  width: 160px; min-width: 140px; background: var(--bg2);
+  border-left: 1px solid var(--border); display: flex;
+  flex-direction: column; padding: 12px 10px; gap: 10px;
+  overflow-y: auto; flex-shrink: 0;
+}
+
+#signal-title { font-size: 12px; font-weight: 600; color: var(--text2); letter-spacing: 0.5px; }
+
+#signal-score-wrap { text-align: center; padding: 10px 0; }
+#signal-score { font-size: 32px; font-weight: 700; line-height: 1; }
+#signal-label { font-size: 12px; margin-top: 4px; font-weight: 600; }
+
+#signal-score.sig-buy, #signal-label.sig-buy { color: var(--green); }
+#signal-score.sig-sell, #signal-label.sig-sell { color: var(--red); }
+#signal-score.sig-neutral, #signal-label.sig-neutral { color: var(--text2); }
+
+#signal-list { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+
+.sig-item {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; padding: 4px 6px; background: var(--bg3);
+  border-radius: 4px;
+}
+.sig-name { color: var(--text2); }
+.sig-hint { font-weight: 600; }
+.sig-hint.buy { color: var(--green); }
+.sig-hint.sell { color: var(--red); }
+.sig-hint.neutral { color: var(--text2); }
+
+#signal-disclaimer { font-size: 10px; color: var(--text3); line-height: 1.4; }
+
+@media (max-width: 900px) { #signal-panel { display: none; } }
