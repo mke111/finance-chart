@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>金融图表 - Finance Chart</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- 顶部工具栏 -->
+    <header id="toolbar">
+      <div id="toolbar-left">
+        <div id="logo">📈 FinChart</div>
+        <div id="symbol-info">
+          <span id="current-symbol">AAPL</span>
+          <span id="current-name">Apple Inc.</span>
+          <span id="current-price">--</span>
+          <span id="current-change" class="neutral">--</span>
+          <span id="current-change-pct" class="neutral">--</span>
+        </div>
+      </div>
+      <div id="toolbar-center">
+        <div id="chart-type-btns">
+          <button class="chart-type-btn active" data-type="candlestick" title="K线">🕯</button>
+          <button class="chart-type-btn" data-type="line" title="折线">📉</button>
+          <button class="chart-type-btn" data-type="area" title="面积">🏔</button>
+        </div>
+        <div id="timeframe-btns">
+          <button class="tf-btn" data-tf="1m">1m</button>
+          <button class="tf-btn" data-tf="5m">5m</button>
+          <button class="tf-btn" data-tf="15m">15m</button>
+          <button class="tf-btn" data-tf="30m">30m</button>
+          <button class="tf-btn" data-tf="1h">1h</button>
+          <button class="tf-btn" data-tf="4h">4h</button>
+          <button class="tf-btn active" data-tf="1D">1D</button>
+          <button class="tf-btn" data-tf="1W">1W</button>
+          <button class="tf-btn" data-tf="1M">1M</button>
+        </div>
+      </div>
+      <div id="toolbar-right">
+        <div id="indicator-menu-btn" class="toolbar-btn" title="指标">
+          <span>指标</span>
+          <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+        </div>
+        <div id="indicator-dropdown" class="dropdown hidden">
+          <div class="dropdown-section">
+            <div class="dropdown-title">叠加指标</div>
+            <label><input type="checkbox" data-ind="MA5"> MA5</label>
+            <label><input type="checkbox" data-ind="MA10"> MA10</label>
+            <label><input type="checkbox" data-ind="MA20"> MA20</label>
+            <label><input type="checkbox" data-ind="MA60"> MA60</label>
+            <label><input type="checkbox" data-ind="MA120"> MA120</label>
+            <label><input type="checkbox" data-ind="MA250"> MA250</label>
+            <label><input type="checkbox" data-ind="EMA12"> EMA12</label>
+            <label><input type="checkbox" data-ind="EMA26"> EMA26</label>
+            <label><input type="checkbox" data-ind="BOLL"> BOLL</label>
+            <label><input type="checkbox" data-ind="VWAP"> VWAP</label>
+          </div>
+          <div class="dropdown-section">
+            <div class="dropdown-title">副图指标</div>
+            <label><input type="checkbox" data-ind="VOL" checked> VOL</label>
+            <label><input type="checkbox" data-ind="MACD"> MACD</label>
+            <label><input type="checkbox" data-ind="RSI6"> RSI(6)</label>
+            <label><input type="checkbox" data-ind="RSI12"> RSI(12)</label>
+            <label><input type="checkbox" data-ind="RSI24"> RSI(24)</label>
+            <label><input type="checkbox" data-ind="KDJ"> KDJ</label>
+            <label><input type="checkbox" data-ind="OBV"> OBV</label>
+            <label><input type="checkbox" data-ind="CCI"> CCI</label>
+            <label><input type="checkbox" data-ind="ATR"> ATR</label>
+            <label><input type="checkbox" data-ind="WR"> 威廉指标</label>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 主体 -->
+    <div id="main">
+      <!-- 左侧品种列表 -->
+      <aside id="sidebar">
+        <div id="search-box">
+          <input type="text" id="search-input" placeholder="搜索代码/名称..." autocomplete="off">
+          <span id="search-icon">🔍</span>
+        </div>
+        <div id="search-results" class="hidden"></div>
+        <div id="category-tabs">
+          <button class="cat-btn active" data-cat="us">美股</button>
+          <button class="cat-btn" data-cat="hk">港股</button>
+          <button class="cat-btn" data-cat="cn">A股</button>
+          <button class="cat-btn" data-cat="fx">外汇</button>
+          <button class="cat-btn" data-cat="metal">贵金属</button>
+          <button class="cat-btn" data-cat="crypto">加密</button>
+        </div>
+        <div id="symbol-list"></div>
+      </aside>
+
+      <!-- 右侧图表区 -->
+      <div id="chart-area">
+        <div id="chart-container"></div>
+        <div id="indicator-panels"></div>
+        <div id="status-bar">
+          <span id="ohlcv-info"></span>
+          <span id="crosshair-info"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/indicators.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
